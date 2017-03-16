@@ -33,7 +33,7 @@ namespace SqlMinimal
         /// <param name="sqlQuery">Comando SQL</param>
         /// <param name="sqlParams">Parametros do SQL</param>
         /// <returns></returns>
-        protected int ExecuteSqlCommand(string sqlQuery, params object[] sqlParams)
+        public int ExecuteSqlCommand(string sqlQuery, params object[] sqlParams)
         {
             int numeroRows = 0;
 
@@ -58,7 +58,7 @@ namespace SqlMinimal
         /// <param name="sqlQuery">Comando SQL</param>
         /// <param name="sqlParams">Parametros do SQL</param>
         /// <returns></returns>
-        protected List<T> SqlQuery<T>(string sqlQuery, params object[] sqlParams)
+        public List<T> SqlQuery<T>(string sqlQuery, params object[] sqlParams)
         {
             List<T> lista = new List<T>();
             T obj = default(T);
