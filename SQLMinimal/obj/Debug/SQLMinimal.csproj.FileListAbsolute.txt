@@ -1,4 +1,0 @@
-C:\Users\Felipe\Documents\Visual Studio 2015\Projects\SQLMinimal\SQLMinimal\bin\Debug\SQLMinimal.dll
-C:\Users\Felipe\Documents\Visual Studio 2015\Projects\SQLMinimal\SQLMinimal\bin\Debug\SQLMinimal.pdb
-C:\Users\Felipe\Documents\Visual Studio 2015\Projects\SQLMinimal\SQLMinimal\obj\Debug\SQLMinimal.dll
-C:\Users\Felipe\Documents\Visual Studio 2015\Projects\SQLMinimal\SQLMinimal\obj\Debug\SQLMinimal.pdb
