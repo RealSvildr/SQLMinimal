@@ -4,21 +4,17 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Reflection;
 
-namespace SqlMinimal
-{
-    public sealed class DBContext
-    {
+namespace SqlMinimal {
+    public sealed class DBContext {
         private string stringConnection = "Data Source={0}; Initial Catalog={1};{2}";
         private SqlConnection db;
 
-        public DBContext(string stringConnection)
-        {
+        public DBContext(string stringConnection) {
             this.stringConnection = stringConnection;
             db = new SqlConnection(stringConnection);
         }
         public DBContext(string serverAddress, string dataBase) : this(serverAddress, dataBase, null, null) { }
-        public DBContext(string serverAddress, string dataBase, string user, string password)
-        {
+        public DBContext(string serverAddress, string dataBase, string user, string password) {
             if (string.IsNullOrEmpty(user) && string.IsNullOrEmpty(password))
                 stringConnection = string.Format(stringConnection, serverAddress, dataBase, "Trusted_Connection=True");
             else
@@ -33,8 +29,7 @@ namespace SqlMinimal
         /// <param name="sqlQuery">Comando SQL</param>
         /// <param name="sqlParams">Parametros do SQL</param>
         /// <returns></returns>
-        public int ExecuteSqlCommand(string sqlQuery, params object[] sqlParams)
-        {
+        public int ExecuteSqlCommand(string sqlQuery, params object[] sqlParams) {
             int numeroRows = 0;
 
             SqlCommand cmd = new SqlCommand(sqlQuery, db);
@@ -58,10 +53,9 @@ namespace SqlMinimal
         /// <param name="sqlQuery">Comando SQL</param>
         /// <param name="sqlParams">Parametros do SQL</param>
         /// <returns></returns>
-        public List<T> SqlQuery<T>(string sqlQuery, params object[] sqlParams)
-        {
+        public List<T> SqlQuery<T>(string sqlQuery, params object[] sqlParams) {
             List<T> lista = new List<T>();
-            T obj = default(T);
+            T obj = Activator.CreateInstance<T>();
             int i = 0;
 
             SqlCommand cmd = new SqlCommand(sqlQuery, db);
@@ -74,31 +68,29 @@ namespace SqlMinimal
             db.Open();
             SqlDataReader reader = cmd.ExecuteReader();
 
-            string propName = string.Empty;
-            PropertyInfo prop;
-            while (reader.Read())
-            {
-                obj = Activator.CreateInstance<T>();
-
-                if (obj.GetType().GetProperties().Length == 0)
-                { 
-                    obj = (T)reader[0]; // Tipo Primitivo
+            if (obj.GetType().GetProperties().Length == 0) {
+                while (reader.Read()) {
+                    lista.Add((T)reader[0]);
                 }
-                else
-                {
-                    for (i = 0; i < reader.FieldCount; i++)
-                    {
+            } else {
+                string propName = string.Empty;
+                PropertyInfo prop;
+
+                while (reader.Read()) {
+                    obj = Activator.CreateInstance<T>();
+
+                    for (i = 0; i < reader.FieldCount; i++) {
                         propName = reader.GetName(i);
 
                         prop = obj.GetType().GetProperty(propName);
-                        if (prop.CanWrite && !object.Equals(reader[prop.Name], DBNull.Value))
-                        {
-                            prop.SetValue(obj, reader[prop.Name], null);
+                        if (prop != null && prop.CanWrite && !object.Equals(reader[prop.Name], DBNull.Value)) {
+                            prop.SetValue(obj, reader[prop.Name].Convert(prop.PropertyType), null);
                         }
                     }
+                    lista.Add(obj);
                 }
-                lista.Add(obj);
             }
+
             db.Close();
 
             return lista;
