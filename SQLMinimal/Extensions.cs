@@ -1,4 +1,10 @@
-﻿public static class Int {
+﻿namespace System.Runtime.CompilerServices {
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
+    public class ExtensionAttribute : Attribute {
+    }
+}
+
+public static class Int {
     public static bool Between(this int value, int firstValue, int secondValue) {
         if (firstValue > secondValue) {
             int tempValue = firstValue;
