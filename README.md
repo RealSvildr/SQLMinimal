@@ -5,6 +5,5 @@ This library was made based at the System.Data.Entity, but with the objective to
 It used the Entity Framework 2.5
 
 TODO: 
-  * Create a disposable method.
   * Create it's own method of Commit, Save and Rollback
   * Create Personalized Exceptions
