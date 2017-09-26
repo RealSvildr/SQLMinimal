@@ -24,10 +24,10 @@ namespace SqlMinimal {
         }
 
         /// <summary>
-        /// Retorna o número de linhas afetadas pelo comando
+        /// Return the number of lines affected
         /// </summary>
-        /// <param name="sqlQuery">Comando SQL</param>
-        /// <param name="sqlParams">Parametros do SQL</param>
+        /// <param name="sqlQuery">SQL Command</param>
+        /// <param name="sqlParams">SQL Parameters</param>
         /// <returns></returns>
         public int ExecuteSqlCommand(string sqlQuery, params object[] sqlParams) {
             int numeroRows = 0;
@@ -47,11 +47,11 @@ namespace SqlMinimal {
         }
 
         /// <summary>
-        /// Retorna uma lista com os dados de tipo T
+        /// Return a list with data of type T
         /// </summary>
-        /// <typeparam name="T">Tipo de dados ao qual será retornado</typeparam>
-        /// <param name="sqlQuery">Comando SQL</param>
-        /// <param name="sqlParams">Parametros do SQL</param>
+        /// <typeparam name="T">Type of data to be returned</typeparam>
+        /// <param name="sqlQuery">SQL Command</param>
+        /// <param name="sqlParams">SQL Parameters</param>
         /// <returns></returns>
         public List<T> SqlQuery<T>(string sqlQuery, params object[] sqlParams) {
             List<T> lista = new List<T>();
