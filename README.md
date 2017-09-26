@@ -1,6 +1,8 @@
 # SQLMinimal
 
-This library was made based on Entity Framework, but focusing the sql connection, with the objective to be small and faster.
+This library was made based at the System.Data.Entity, but with the objective to be smaller and faster.
+
+It used the Entity Framework 2.5
 
 TODO: 
   * Create a disposable method.
