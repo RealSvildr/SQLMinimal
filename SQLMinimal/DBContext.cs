@@ -2,9 +2,12 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.Data.SqlTypes;
 using System.Reflection;
+using System.Web;
 
 namespace SqlMinimal {
+    //TODO: Set SqlTransaction as Disposable to be able to use inside an "using"
     public sealed class DBContext {
         private string stringConnection = "Data Source={0}; Initial Catalog={1};{2}";
         private SqlConnection db;
@@ -32,8 +35,14 @@ namespace SqlMinimal {
         public int ExecuteSqlCommand(string sqlQuery, params object[] sqlParams) {
             int numeroRows = 0;
 
-            SqlCommand cmd = new SqlCommand(sqlQuery, db);
-            cmd.CommandType = CommandType.Text;
+            SqlCommand cmd = new SqlCommand(sqlQuery, db) {
+                CommandTimeout = _timeOut,
+                CommandType = CommandType.Text
+            };
+
+            if (sqlTransaction != null)
+                cmd.Transaction = sqlTransaction;
+
 
             if (sqlParams != null)
                 for (int i = 0; i < sqlParams.Length; i++)
@@ -58,8 +67,14 @@ namespace SqlMinimal {
             T obj = Activator.CreateInstance<T>();
             int i = 0;
 
-            SqlCommand cmd = new SqlCommand(sqlQuery, db);
-            cmd.CommandType = CommandType.Text;
+            SqlCommand cmd = new SqlCommand(sqlQuery, db) {
+                CommandTimeout = _timeOut,
+                CommandType = CommandType.Text
+            };
+
+            if (sqlTransaction != null)
+                cmd.Transaction = sqlTransaction;
+
 
             if (sqlParams != null)
                 for (i = 0; i < sqlParams.Length; i++)
@@ -95,5 +110,111 @@ namespace SqlMinimal {
 
             return lista;
         }
+
+        /// <summary>
+        /// Streams data to the Context Result, 
+        /// The size of the buffer can be defined on DBContext.bufferSize
+        /// </summary>
+        /// <param name="context">Page context that will receive the data.</param>
+        /// <param name="offset">Start offset of the stream, used of big streams like videos.</param>
+        /// <param name="sqlQuery">SQL Command</param>
+        /// <param name="sqlParams">SQL Parameters</param>
+        public void FileStream(HttpContext context, long offset, string sqlQuery, params object[] sqlParams) {
+            int i = 0;
+
+            SqlCommand cmd = new SqlCommand(sqlQuery, db) {
+                CommandTimeout = _timeOut,
+                CommandType = CommandType.Text
+            };
+
+            if (sqlParams != null)
+                for (i = 0; i < sqlParams.Length; i++)
+                    cmd.Parameters.AddWithValue("p" + i.ToString(), sqlParams[i] == null ? DBNull.Value : sqlParams[i]);
+
+            db.Open();
+            SqlDataReader reader = cmd.ExecuteReader();
+
+            //Get FilePath
+            string filePath = string.Empty;
+            long size = 0;
+            if (reader.Read()) {
+                filePath = reader["PathName"].ToString();
+                size = Convert.ToInt64(reader["Size"]);
+            }
+
+            reader.Close();
+
+            //Obtain Transaction for Blob
+            SqlTransaction trans = db.BeginTransaction("mainTransaction");
+            cmd.Transaction = trans;
+            cmd.CommandText = "SELECT GET_FILESTREAM_TRANSACTION_CONTEXT()";
+            byte[] txtContent = (byte[])cmd.ExecuteScalar();
+
+            //Obtain Handle
+            SqlFileStream sqlFileStream = new SqlFileStream(filePath, txtContent, System.IO.FileAccess.Read);
+
+            //Read data
+            sqlFileStream.Seek(offset, System.IO.SeekOrigin.Begin);
+
+            try {
+                int bytesRead;
+                byte[] buffer = new byte[_bufferSize];
+                do {
+                    bytesRead = sqlFileStream.Read(buffer, 0, buffer.Length);
+                    context.Response.OutputStream.Write(buffer, 0, bytesRead);
+                } while (bytesRead == buffer.Length);
+            } catch (Exception) { }
+
+            sqlFileStream.Close();
+            cmd.Transaction.Commit();
+            db.Close();
+        }
+
+        //  • Not Working yet
+        //#region Transaction
+        //public void StartTransaction() {
+        //    if (sqlTransaction != null) {
+        //        throw new SqlMinimalException("Transaction already exists.");
+        //    }
+
+        //    sqlTransaction = db.BeginTransaction("mainTransaction");
+        //}
+
+        //public void Commit(bool dispose = true) {
+        //    if (sqlTransaction == null) {
+        //        throw new SqlMinimalException("Transaction doesn't exists.");
+        //    }
+
+        //    sqlTransaction.Commit();
+
+        //    if (dispose) {
+        //        sqlTransaction.Dispose();
+        //        sqlTransaction = null;
+        //    }
+        //}
+
+        //public void Rollback(bool dispose = true) {
+        //    if (sqlTransaction == null) {
+        //        throw new SqlMinimalException("Transaction doesn't exists.");
+        //    }
+
+        //    sqlTransaction.Rollback();
+
+        //    if (dispose) {
+        //        sqlTransaction.Dispose();
+        //        sqlTransaction = null;
+        //    }
+        //}
+        //#endregion
+
+        #region Parameters
+        private int _timeOut = 120;
+        public int timeOut { get { return _timeOut; } set { timeOut = value > 5 ? value : 5; } }
+
+        private int _bufferSize = 65536;
+        public int bufferSize { get { return _bufferSize; } set { _bufferSize = value > 255 ? value : 255; } }
+
+        private SqlTransaction sqlTransaction = null;
+        #endregion
     }
 }
