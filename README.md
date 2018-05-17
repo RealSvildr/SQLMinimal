@@ -4,7 +4,8 @@ This library was made based on System.Data.Entity, but with the objective to be 
 
 Change Notes:
 
-  * v1.2 - Included FileStream function to use with video streaming or data streaming
+* v1.2
+  * Included FileStream function to use with video streaming or data streaming
 
 
 It uses Entity Framework 2.5
