@@ -2,6 +2,8 @@
 
 This library was made based on System.Data.Entity, but with the objective to be smaller and faster.
 
+Complied Lib: https://github.com/RealSvildr/SQLMinimal/blob/master/SQLMinimal.dll
+
 Change Notes:
 
 * v1.2
