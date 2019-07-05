@@ -5,6 +5,8 @@ This library was made based on System.Data.Entity, but with the objective to be 
 Complied Lib: https://github.com/RealSvildr/SQLMinimal/blob/master/SQLMinimal.dll
 
 Change Notes:
+* v1.2.5
+  * Added Transaction
 
 * v1.2
   * Included FileStream function to use with video streaming or data streaming
@@ -13,7 +15,7 @@ Change Notes:
   * Function ExecuteSqlCommand for functions with no return
   * Function SQLQuery for functions with return
   
-It uses Entity Framework 2.5
+Minimal Requirement to use: Entity Framework 2.5 or .NET Core 1.0 + Microsoft.Data.SqlClient
 
 P.S.: If you don't want to use those Extensions methods, you can remove the file, but you have to paste the class Object into the DBContext file and change it to private.
 
