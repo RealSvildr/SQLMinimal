@@ -125,6 +125,8 @@ public static class Object {
         switch (type.Name) {
             case "String": return value.ToString();
             case "Boolean": return System.Convert.ToBoolean(value);
+            case "Int": case "Int32": return System.Convert.ToInt32(value);
+            case "DateTime": return System.Convert.ToDateTime(value);
         }
 
         return value;
