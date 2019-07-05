@@ -1,4 +1,6 @@
-﻿using System;
+﻿/*! SQLMinimal v1.2.5 | (c) Svildr 2017 ~ 2019 | MIT License */
+
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
@@ -7,9 +9,8 @@ using System.Reflection;
 using System.Web;
 
 namespace SqlMinimal {
-    //TODO: Set SqlTransaction as Disposable to be able to use inside an "using"
     public sealed class DBContext {
-        private string stringConnection = "Data Source={0}; Initial Catalog={1};{2}";
+        private readonly string stringConnection = "Data Source={0}; Initial Catalog={1};{2}";
         private SqlConnection db;
 
         public DBContext(string stringConnection) {
@@ -40,8 +41,8 @@ namespace SqlMinimal {
                 CommandType = CommandType.Text
             };
 
-            if (sqlTransaction != null)
-                cmd.Transaction = sqlTransaction;
+            if (_objectTransaction != null)
+                cmd.Transaction = _objectTransaction.Transaction;
 
 
             if (sqlParams != null)
@@ -72,15 +73,17 @@ namespace SqlMinimal {
                 CommandType = CommandType.Text
             };
 
-            if (sqlTransaction != null)
-                cmd.Transaction = sqlTransaction;
+            if (_objectTransaction != null)
+                cmd.Transaction = _objectTransaction.Transaction;
 
 
             if (sqlParams != null)
                 for (i = 0; i < sqlParams.Length; i++)
                     cmd.Parameters.AddWithValue("p" + i.ToString(), sqlParams[i] == null ? DBNull.Value : sqlParams[i]);
 
-            db.Open();
+            if(db.State != ConnectionState.Open)
+                db.Open();
+                
             SqlDataReader reader = cmd.ExecuteReader();
 
             if (obj.GetType().GetProperties().Length == 0) {
@@ -116,10 +119,10 @@ namespace SqlMinimal {
         /// The size of the buffer can be defined on DBContext.bufferSize
         /// </summary>
         /// <param name="context">Page context that will receive the data.</param>
-        /// <param name="offset">Start offset of the stream, used of big streams like videos.</param>
         /// <param name="sqlQuery">SQL Command</param>
+        /// <param name="offset">Start offset of the stream, used of big streams like videos.</param>
         /// <param name="sqlParams">SQL Parameters</param>
-        public void FileStream(HttpContext context, long offset, string sqlQuery, params object[] sqlParams) {
+        public void FileStream(HttpContext context, string sqlQuery, long offset, params object[] sqlParams) {
             int i = 0;
 
             SqlCommand cmd = new SqlCommand(sqlQuery, db) {
@@ -145,8 +148,8 @@ namespace SqlMinimal {
             reader.Close();
 
             //Obtain Transaction for Blob
-            SqlTransaction trans = db.BeginTransaction("mainTransaction");
-            cmd.Transaction = trans;
+            SqlTransaction sqlTransaction = db.BeginTransaction("fileStreamTransaction");
+            cmd.Transaction = sqlTransaction;
             cmd.CommandText = "SELECT GET_FILESTREAM_TRANSACTION_CONTEXT()";
             byte[] txtContent = (byte[])cmd.ExecuteScalar();
 
@@ -169,52 +172,95 @@ namespace SqlMinimal {
             cmd.Transaction.Commit();
             db.Close();
         }
+        
+        #region Transaction
+        public void StartTransaction(string transactionName = "main") {
+            if (_transactionList.Exists(o => o.Name == transactionName)) {
+                throw new SqlMinimalException("Transaction already exists.");
+            }
 
-        //  • Not Working yet
-        //#region Transaction
-        //public void StartTransaction() {
-        //    if (sqlTransaction != null) {
-        //        throw new SqlMinimalException("Transaction already exists.");
-        //    }
+            _objectTransaction = new TransactionObject() {
+                Name = transactionName,
+                Transaction = db.BeginTransaction(transactionName)
+            };
+            
+            _transactionList.Add(_objectTransaction);
+        }
 
-        //    sqlTransaction = db.BeginTransaction("mainTransaction");
-        //}
+        public void Commit(bool dispose = true) {
+            if (_objectTransaction == null) {
+                throw new SqlMinimalException("Transaction doesn't exists or is not selected.");
+            }
 
-        //public void Commit(bool dispose = true) {
-        //    if (sqlTransaction == null) {
-        //        throw new SqlMinimalException("Transaction doesn't exists.");
-        //    }
+            _objectTransaction.Transaction.Commit();
 
-        //    sqlTransaction.Commit();
+            if (dispose)
+                DisposeTransaction();
+        }
+        public void Rollback(bool dispose = true) {
+            if (_objectTransaction == null) {
+                throw new SqlMinimalException("Transaction doesn't exists or is not selected.");
+            }
 
-        //    if (dispose) {
-        //        sqlTransaction.Dispose();
-        //        sqlTransaction = null;
-        //    }
-        //}
+            _objectTransaction.Transaction.Rollback();
 
-        //public void Rollback(bool dispose = true) {
-        //    if (sqlTransaction == null) {
-        //        throw new SqlMinimalException("Transaction doesn't exists.");
-        //    }
+            if (dispose)
+                DisposeTransaction();
+        }
 
-        //    sqlTransaction.Rollback();
+        public void ChangeTransaction(string transactionName) {
+            if (string.IsNullOrEmpty(transactionName)) {
+                _objectTransaction = null;
+            }
 
-        //    if (dispose) {
-        //        sqlTransaction.Dispose();
-        //        sqlTransaction = null;
-        //    }
-        //}
-        //#endregion
+            TransactionObject tObject = null;
+            foreach (TransactionObject _obj in _transactionList) {
+                if (_obj.Name == transactionName) {
+                    tObject = _obj;
+                    break;
+                }
+            }
+
+            if (tObject == null) {
+                throw new SqlMinimalException("Transaction not found.");
+            }
+
+            _objectTransaction = tObject;
+        }
+
+        private void DisposeTransaction() {
+            _objectTransaction.Transaction.Dispose();
+
+            int i = 0;
+            for (i = 0; i < _transactionList.Count; i++) {
+                if (_transactionList[i].Name == _objectTransaction.Name) {
+                    _transactionList.RemoveAt(i);
+                    break;
+                }
+            }
+
+            if (_transactionList.Count == 0)
+                _objectTransaction = null;
+            else if (i < _transactionList.Count)
+                _objectTransaction = _transactionList[i];
+            else
+                _objectTransaction = _transactionList[i - 1];
+        }
+        #endregion
 
         #region Parameters
         private int _timeOut = 120;
-        public int timeOut { get { return _timeOut; } set { timeOut = value > 5 ? value : 5; } }
+        public int TimeOut { get { return _timeOut; } set { _timeOut = value > 5 ? value : 5; } }
 
         private int _bufferSize = 65536;
-        public int bufferSize { get { return _bufferSize; } set { _bufferSize = value > 255 ? value : 255; } }
-
-        private SqlTransaction sqlTransaction = null;
+        public int BufferSize { get { return _bufferSize; } set { _bufferSize = value > 255 ? value : 255; } }
+        
+        private List<TransactionObject> _transactionList = null;
+        private TransactionObject _objectTransaction = null;
+        private class TransactionObject {
+            public string Name { get; set; }
+            public SqlTransaction Transaction { get; set; }
+        }
         #endregion
     }
 }
