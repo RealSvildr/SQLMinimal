@@ -100,7 +100,7 @@ namespace SqlMinimal {
                     for (i = 0; i < reader.FieldCount; i++) {
                         propName = reader.GetName(i);
 
-                        prop = obj.GetType().GetProperty(propName);
+                        prop = obj.GetType().GetProperty(propName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
                         if (prop != null && prop.CanWrite && !object.Equals(reader[prop.Name], DBNull.Value)) {
                             prop.SetValue(obj, reader[prop.Name].Convert(prop.PropertyType), null);
                         }
